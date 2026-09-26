@@ -9,7 +9,7 @@
 | Campo | Tipo | Restricciones |
 |-------|------|---------------|
 | `id` | Integer | PK, autoincremental |
-| `email` | String(254) | NOT NULL, **UNIQUE**, indexado (RN-5) |
+| `email` | String(254) | NOT NULL, **UNIQUE**, indexado (RN-5); se guarda en minúsculas (lo normaliza el servicio) |
 | `password_hash` | String(60..) | NOT NULL; hash bcrypt, nunca la contraseña (Art. IV.2) |
 
 Relación: `Usuario 1 ── N Reserva` (`usuario.reservas`).
@@ -89,7 +89,7 @@ valor por defecto del parámetro `repo` (DIP, Art. II.1).
 | `ReservaLeer` | `id`, `usuario_id`, `fecha`, `hora_inicio`, `hora_fin` | `from_attributes=True` |
 
 Los schemas solo validan **formato**; RN-1…RN-7 no viven en ellos.
-`skip: int = Query(0, ge=0)`, `limit: int = Query(100, ge=1, le=100)` (valores por defecto
+`skip: int = Query(SKIP_MINIMO, ge=SKIP_MINIMO)`, `limit: int = Query(LIMITE_POR_DEFECTO, ge=LIMITE_MINIMO, le=LIMITE_MAXIMO)`, con las constantes (0, 1, 100, 100) definidas una sola vez en `services/reservas.py` y compartidas con el tool MCP (valores por defecto
 razonables, exigidos por la spec; fuera de rango → 422).
 
 ## Reglas de negocio → excepción de dominio → traducción

@@ -178,6 +178,9 @@ comprobar que la reserva sigue existiendo; cancelar confirmando y comprobar que 
 - **Modificar una reserva sin cambios**: se acepta (no se solapa consigo misma).
 - **Solicitudes simultáneas por el mismo horario**: no cubiertas en esta versión; si dos
   solicitudes llegan a la vez, no se garantiza que solo una se acepte (limitación conocida).
+- **Email con mayúsculas**: el email se guarda y se busca en minúsculas; registrar
+  `usuario@x.com` teniendo ya `Usuario@X.com` se rechaza (400, RN-5), e iniciar sesión funciona
+  con cualquier combinación de mayúsculas. La respuesta devuelve el email en minúsculas.
 - **Mensajes de error**: nunca revelan la contraseña ni datos de otros usuarios.
 
 ## Requirements *(mandatory)*
@@ -187,7 +190,9 @@ comprobar que la reserva sigue existiendo; cancelar confirmando y comprobar que 
 **Usuarios y acceso**
 
 - **FR-001**: El sistema MUST permitir registrar un usuario con email y contraseña.
-- **FR-002**: El sistema MUST rechazar (400) el registro de un email ya registrado (RN-5).
+- **FR-002**: El sistema MUST rechazar (400) el registro de un email ya registrado (RN-5). El
+  email se normaliza a minúsculas antes de guardarlo y de buscarlo: `Usuario@X.com` y
+  `usuario@x.com` son el mismo email.
 - **FR-003**: El sistema MUST rechazar (422) registros con datos mal formados.
 - **FR-004**: El sistema MUST no exponer nunca la contraseña en ninguna respuesta.
 - **FR-005**: El sistema MUST permitir iniciar sesión con email y contraseña y devolver un

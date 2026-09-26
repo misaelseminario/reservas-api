@@ -74,11 +74,16 @@ Spike con `FastMCP` + `FastAPI` + `TestClient`. Resultados:
    sesión queda «pegada» a la identidad de la primera petición).
 5. **Protección DNS-rebinding**: por defecto solo admite `Host` = `localhost:*`,
    `127.0.0.1:*`, `[::1]:*`. Un `Host` sin puerto (`localhost`) o distinto (`testserver`)
-   recibe **421**. Los tests MCP deben usar `TestClient(app, base_url="http://localhost:8000")`.
+   recibe **421**. Los tests MCP deben usar `TestClient(crear_app(), base_url="http://localhost:8000")`.
    Consecuencia operativa: el servidor MCP funciona tal cual en `localhost:8000`; publicarlo
    bajo otro nombre de host exigiría configurar `TransportSecuritySettings` (fuera de
    alcance; queda anotado en la spec como despliegue local).
 6. **Peticiones**: el cliente debe enviar `Accept: application/json, text/event-stream`.
+
+7. **Una sola ejecución por instancia**: `StreamableHTTPSessionManager.run()` lanza
+   `RuntimeError` si se llama dos veces (verificado en `mcp==1.30.0`,
+   `server/streamable_http_manager.py`). Por eso `crear_servidor_mcp()` y `crear_app()` son
+   fábricas: cada app (y cada test) tiene su propio servidor MCP.
 
 **Decisión**: `stateless_http=True`, `json_response=True`, mount final en `/`, ruta MCP `/mcp`.
 

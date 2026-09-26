@@ -181,7 +181,7 @@ uv.lock
 .gitignore               # incluye .env
 
 app/
-├── main.py              # crea FastAPI, lifespan (create_all + mcp.session_manager.run()), incluye routers, monta MCP en "/" al final
+├── main.py              # crear_app() (FastAPI, lifespan con create_all + session_manager.run(), routers, MCP montado en "/" al final) y app = crear_app()
 ├── core/
 │   ├── config.py        # Settings (pydantic-settings), get_settings()
 │   ├── security.py      # hash/verify bcrypt; crear_token/decodificar_token (PyJWT)
@@ -205,7 +205,7 @@ app/
 │   ├── auth.py          # /auth/registro, /auth/login
 │   └── reservas.py      # /reservas/
 ├── mcp/
-│   ├── server.py        # FastMCP + tools crear_reserva, listar_reservas, cancelar_reserva
+│   ├── server.py        # crear_servidor_mcp(): FastMCP + tools crear_reserva, listar_reservas, cancelar_reserva
 │   └── autenticacion.py # Bearer de la cabecera -> usuario (misma función que REST)
 └── utils/
     └── fechas.py        # parseo YYYY-MM-DD / HH:MM y formato de salida MCP
