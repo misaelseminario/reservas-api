@@ -8,6 +8,16 @@
 
 **Input**: User description: "Sistema de reservas de un espacio compartido (una sala). Los usuarios se registran, inician sesión y gestionan sus reservas por REST y por MCP."
 
+## Clarifications
+
+### Session 2026-09-26
+
+- Q: Si una reserva termina a las 10:00 y otra empieza a las 10:00 el mismo día, ¿se permiten ambas (no se consideran solapadas)? → A: Sí, se permiten. Las reservas contiguas NO se solapan; solo hay solapamiento si los intervalos comparten tiempo real. Tiene su propio test.
+- Q: ¿Una reserva debe empezar y terminar el mismo día (sin cruzar la medianoche)? → A: Sí. Una reserva pertenece a un solo día y `hora_fin` debe ser posterior a `hora_inicio` en ese mismo día; un rango como 23:00 → 01:00 es una hora inválida (400).
+- Q: ¿Se puede crear o modificar una reserva con una fecha que ya pasó? → A: No. Se rechaza (400) una reserva cuya fecha y hora de inicio ya pasaron. Es una regla de negocio nueva, RN-7, con su prueba; también se aplica al modificar y por MCP.
+- Q: Si dos personas intentan reservar el mismo horario exactamente al mismo tiempo, ¿debe garantizarse que solo una se guarde? → A: No en esta versión. Se asume poco tráfico: la comprobación de solapamiento se hace al procesar cada solicitud, sin protección adicional frente a solicitudes verdaderamente simultáneas (limitación conocida y aceptada).
+- Q: ¿Debe haber una duración mínima o máxima para una reserva? → A: No. Cualquier duración positiva es válida; no hay límites en esta versión.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Registro e inicio de sesión (Priority: P1)
@@ -54,17 +64,23 @@ obtenerla por id; intentar crear otra que se solape y una con horas inválidas.
 2. **Given** una reserva existente de cualquier usuario en un horario, **When** otro (o el
    mismo) usuario crea una reserva que se solapa en fecha y horario, **Then** se rechaza con
    400 (RN-1).
-3. **Given** una hora de fin anterior o igual a la hora de inicio, **When** se crea la
-   reserva, **Then** se rechaza con 400 (RN-2).
-4. **Given** un usuario con reservas propias y ajenas en el sistema, **When** lista sus
+3. **Given** una hora de fin anterior o igual a la hora de inicio (incluido un rango que
+   pretende cruzar la medianoche, como 23:00 → 01:00), **When** se crea la reserva,
+   **Then** se rechaza con 400 (RN-2).
+4. **Given** una reserva existente el mismo día que termina a las 10:00, **When** se crea
+   otra que empieza a las 10:00 (o una que termina a las 10:00 cuando la existente empieza
+   a esa hora), **Then** se acepta (201): las reservas contiguas no se solapan (RN-1).
+5. **Given** un usuario con reservas propias y ajenas en el sistema, **When** lista sus
    reservas indicando `skip` y `limit`, **Then** recibe solo las suyas, respetando la
    paginación (200).
-5. **Given** un usuario autenticado, **When** consulta por id una reserva propia, **Then**
+6. **Given** un usuario autenticado, **When** consulta por id una reserva propia, **Then**
    la recibe (200).
-6. **Given** una solicitud sin token o con token inválido, **When** intenta listar o crear
+7. **Given** una solicitud sin token o con token inválido, **When** intenta listar o crear
    reservas, **Then** se rechaza con 401.
-7. **Given** datos con formato inválido (fecha u hora mal formadas), **When** se envían,
+8. **Given** datos con formato inválido (fecha u hora mal formadas), **When** se envían,
    **Then** se rechazan con 422.
+9. **Given** una fecha y hora de inicio anteriores al momento actual (p. ej. ayer), **When**
+   se crea la reserva, **Then** se rechaza con 400 (RN-7).
 
 ---
 
@@ -98,6 +114,8 @@ modificarla y eliminarla (403); con A modificarla y eliminarla correctamente.
    deja de aparecer en su listado.
 8. **Given** una solicitud sin token, **When** se intenta consultar, modificar o eliminar,
    **Then** se rechaza con 401.
+9. **Given** una reserva propia, **When** se modifica a una fecha y hora de inicio ya
+   pasadas, **Then** se rechaza con 400 (RN-4 / RN-7).
 
 ---
 
@@ -117,7 +135,7 @@ comprobar que la reserva sigue existiendo; cancelar confirmando y comprobar que 
 
 1. **Given** una sesión MCP identificada con un token válido, **When** se usa `crear_reserva`
    con fecha, hora_inicio y hora_fin, **Then** se aplican las mismas reglas que en la
-   creación por REST (RN-1, RN-2) y la reserva queda a nombre del usuario de la sesión.
+   creación por REST (RN-1, RN-2, RN-7) y la reserva queda a nombre del usuario de la sesión.
 2. **Given** una sesión MCP identificada, **When** se usa `listar_reservas` con `skip` y
    `limit`, **Then** se devuelven solo las reservas del usuario, igual que por REST.
 3. **Given** una reserva propia, **When** se usa `cancelar_reserva` sin `confirmar=true`,
@@ -138,17 +156,28 @@ comprobar que la reserva sigue existiendo; cancelar confirmando y comprobar que 
 ### Edge Cases
 
 - **Reservas contiguas**: una reserva que termina a las 10:00 y otra que empieza a las 10:00
-  el mismo día NO se solapan; se permiten.
+  el mismo día NO se solapan; se permiten (en ambos órdenes de creación). Aplica también al
+  modificar (RN-4) y por MCP.
+- **Duración**: sin límites mínimo ni máximo; una reserva de 1 minuto o de todo el día es
+  válida mientras `hora_fin` sea posterior a `hora_inicio`.
 - **Reserva idéntica**: mismo día y mismo horario que una existente → solapamiento (400).
 - **Reserva contenida o que contiene** a otra existente → solapamiento (400).
 - **Mismo horario, distinta fecha**: no hay solapamiento.
 - **Horas iguales** (`hora_inicio == hora_fin`) → horas inválidas (400).
 - **Reserva que cruza la medianoche**: no soportada; una reserva ocurre dentro de un solo
-  día, por lo que `hora_fin` debe ser posterior a `hora_inicio` en ese mismo día.
+  día, por lo que `hora_fin` debe ser posterior a `hora_inicio` en ese mismo día. Un rango
+  como 23:00 → 01:00 se rechaza como horas inválidas (400). Para cubrir ese periodo hay que
+  hacer dos reservas contiguas, una por día.
+- **Fecha u hora de inicio en el pasado**: se rechaza (400, RN-7) al crear y al modificar. La
+  comparación es contra el momento actual: una reserva de hoy cuya hora de inicio ya pasó
+  también se rechaza; una que empieza exactamente ahora o después se acepta. El sistema no
+  reescribe ni elimina reservas que ya quedaron en el pasado.
 - **Paginación fuera de rango** (`skip` mayor que el total): lista vacía, no error.
 - **Id de reserva inexistente frente a ajeno**: inexistente → 404; existente de otro usuario
   → 403.
 - **Modificar una reserva sin cambios**: se acepta (no se solapa consigo misma).
+- **Solicitudes simultáneas por el mismo horario**: no cubiertas en esta versión; si dos
+  solicitudes llegan a la vez, no se garantiza que solo una se acepte (limitación conocida).
 - **Mensajes de error**: nunca revelan la contraseña ni datos de otros usuarios.
 
 ## Requirements *(mandatory)*
@@ -173,9 +202,13 @@ comprobar que la reserva sigue existiendo; cancelar confirmando y comprobar que 
 - **FR-008**: El sistema MUST permitir crear una reserva con fecha, hora de inicio y hora
   de fin, asociada al usuario autenticado (201).
 - **FR-009**: El sistema MUST rechazar (400) una reserva cuyo horario se solape en fecha y
-  horario con cualquier reserva existente, sin importar quién sea su dueño (RN-1).
+  horario con cualquier reserva existente, sin importar quién sea su dueño (RN-1). Hay
+  solapamiento solo si ambos intervalos comparten tiempo real, es decir, si `inicio_nueva <
+  fin_existente` **y** `fin_nueva > inicio_existente`; las reservas contiguas (una termina
+  a la hora exacta en que empieza la otra) NO se solapan y MUST aceptarse.
 - **FR-010**: El sistema MUST rechazar (400) una reserva cuya hora de fin no sea posterior a
-  la hora de inicio (RN-2).
+  la hora de inicio dentro del mismo día (RN-2). Una reserva no cruza la medianoche: tiene
+  una única fecha.
 - **FR-011**: El sistema MUST listar únicamente las reservas del usuario autenticado, con
   paginación mediante `skip` y `limit` (200).
 - **FR-012**: El sistema MUST permitir consultar una reserva por id (200) solo a su dueño.
@@ -185,35 +218,38 @@ comprobar que la reserva sigue existiendo; cancelar confirmando y comprobar que 
   usuario, sin importar el id que pase, el sistema MUST responder 403 (RN-3).
 - **FR-015**: Cuando la reserva indicada no exista, el sistema MUST responder 404 al
   consultarla, modificarla o eliminarla.
-- **FR-016**: Al modificar una reserva, el sistema MUST volver a aplicar RN-1 y RN-2,
+- **FR-016**: Al modificar una reserva, el sistema MUST volver a aplicar RN-1, RN-2 y RN-7,
   excluyendo a la propia reserva de la verificación de solapamiento (RN-4).
 - **FR-017**: Los datos de reserva con formato inválido MUST rechazarse con 422.
+- **FR-018**: El sistema MUST rechazar (400) crear o modificar una reserva cuya fecha y hora de
+  inicio sean anteriores al momento actual (RN-7).
 
 **Acceso por MCP**
 
-- **FR-018**: El sistema MUST ofrecer por MCP la herramienta `crear_reserva(fecha,
+- **FR-019**: El sistema MUST ofrecer por MCP la herramienta `crear_reserva(fecha,
   hora_inicio, hora_fin)` con las mismas reglas que la creación por REST, sobre el usuario
   autenticado de la sesión.
-- **FR-019**: El sistema MUST ofrecer por MCP la herramienta `listar_reservas(skip, limit)`
+- **FR-020**: El sistema MUST ofrecer por MCP la herramienta `listar_reservas(skip, limit)`
   con el mismo comportamiento que el listado por REST.
-- **FR-020**: El sistema MUST ofrecer por MCP la herramienta `cancelar_reserva(reserva_id,
+- **FR-021**: El sistema MUST ofrecer por MCP la herramienta `cancelar_reserva(reserva_id,
   confirmar)`; si `confirmar` no es verdadero, el servidor MUST NOT eliminar nada y MUST
   responder pidiendo confirmación (RN-6). Con confirmación, MUST verificar antes que la
   reserva pertenece al usuario.
-- **FR-021**: La confirmación de cancelación MUST validarla el servidor; no puede depender de
+- **FR-022**: La confirmación de cancelación MUST validarla el servidor; no puede depender de
   que el asistente decida preguntar.
-- **FR-022**: El usuario de la sesión MCP MUST obtenerse del mismo token que usa el acceso
+- **FR-023**: El usuario de la sesión MCP MUST obtenerse del mismo token que usa el acceso
   REST, enviado como credencial de portador en la cabecera de autorización.
-- **FR-023**: Los errores en MCP MUST devolverse con formato `{"error": "..."}`.
-- **FR-024**: Las reglas de negocio MUST ser idénticas por REST y por MCP: ambas vías
+- **FR-024**: Los errores en MCP MUST devolverse con formato `{"error": "..."}`.
+- **FR-025**: Las reglas de negocio MUST ser idénticas por REST y por MCP: ambas vías
   MUST producir el mismo resultado ante la misma situación (aunque cambie el formato de la
   respuesta).
 
 **Cobertura de pruebas exigida por el contrato**
 
-- **FR-025**: Cada regla de negocio (RN-1 a RN-6) MUST tener al menos una prueba, y los
-  siete casos de error explícitos listados en "Casos de error con prueba obligatoria"
-  MUST tener su prueba.
+- **FR-026**: Cada regla de negocio (RN-1 a RN-7) MUST tener al menos una prueba, y los
+  ocho casos de error explícitos listados en "Casos de error con prueba obligatoria"
+  MUST tener su prueba. Además, el caso de reservas contiguas (aceptadas, no solapadas)
+  MUST tener su propia prueba independiente de las de solapamiento.
 
 ### Contrato de la API (REST)
 
@@ -221,10 +257,10 @@ comprobar que la reserva sigue existiendo; cancelar confirmando y comprobar que 
 |--------|------|------|---------|-------|-------------------|
 | POST | /auth/registro | No | email, password | 201 Usuario (sin contraseña) | 400 email ya registrado, 422 |
 | POST | /auth/login | No | formulario OAuth2: username (email), password | 200 access_token, token_type | 401 credenciales inválidas |
-| POST | /reservas/ | Sí | fecha, hora_inicio, hora_fin | 201 Reserva | 400 horario solapado, 400 horas inválidas, 401, 422 |
+| POST | /reservas/ | Sí | fecha, hora_inicio, hora_fin | 201 Reserva | 400 horario solapado, 400 horas inválidas, 400 fecha pasada, 401, 422 |
 | GET | /reservas/ | Sí | query: skip, limit | 200 lista (solo del usuario) | 401 |
 | GET | /reservas/{id} | Sí | — | 200 Reserva | 401, 403 no es dueño, 404 |
-| PUT | /reservas/{id} | Sí | fecha, hora_inicio, hora_fin | 200 Reserva | 400 solapado, 400 horas inválidas, 401, 403, 404, 422 |
+| PUT | /reservas/{id} | Sí | fecha, hora_inicio, hora_fin | 200 Reserva | 400 solapado, 400 horas inválidas, 400 fecha pasada, 401, 403, 404, 422 |
 | DELETE | /reservas/{id} | Sí | — | 204 | 401, 403 no es dueño, 404 |
 
 ### Contrato equivalente por MCP
@@ -248,6 +284,7 @@ de portador).
 6. Registrar un email ya existente → 400.
 7. `cancelar_reserva` por MCP sin `confirmar=true` → no elimina, devuelve mensaje de
    confirmación requerida.
+8. Crear (o modificar a) una reserva con fecha y hora de inicio en el pasado → 400.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -262,8 +299,9 @@ de portador).
 ### Measurable Outcomes
 
 - **SC-001**: El 100 % de los intentos de crear o modificar una reserva que se solape con
-  otra existente (de cualquier usuario) son rechazados; ninguna pareja de reservas
-  solapadas llega a existir.
+  otra ya existente (de cualquier usuario) son rechazados cuando las solicitudes se
+  procesan de una en una. Las solicitudes verdaderamente simultáneas quedan fuera de esta
+  garantía (ver Assumptions).
 - **SC-002**: El 100 % de los intentos de ver, modificar o cancelar reservas de otro usuario
   son rechazados y no revelan sus datos.
 - **SC-003**: El 100 % de las solicitudes sobre reservas sin credenciales válidas son
@@ -275,21 +313,21 @@ de portador).
   el 100 % de los casos verificados.
 - **SC-007**: Un usuario nuevo puede registrarse, iniciar sesión y crear su primera reserva
   en menos de 2 minutos.
-- **SC-008**: Las 6 reglas de negocio y los 7 casos de error explícitos cuentan cada uno con
-  al menos una prueba que pasa.
+- **SC-008**: Las 7 reglas de negocio, los 8 casos de error explícitos y el caso de reservas
+  contiguas cuentan cada uno con al menos una prueba que pasa.
 
 ## Assumptions
 
 - Hay una única sala; no existe el concepto de varias salas ni de sala en las reservas.
 - Fecha y hora son las de un único huso horario común; no se contemplan husos por usuario.
 - Formatos de entrada: fecha `YYYY-MM-DD`, hora `HH:MM`.
-- Dos reservas del mismo día son contiguas (no solapadas) si una termina exactamente cuando
-  empieza la otra.
-- Una reserva no cruza la medianoche.
-- No se restringe crear reservas en fechas pasadas ni se impone duración mínima o máxima;
-  queda fuera del alcance de esta versión.
+- Sin duración mínima ni máxima: cualquier duración positiva (`hora_fin` posterior a
+  `hora_inicio`) es válida.
+- «Momento actual» es la fecha y hora del servidor en el huso horario común del sistema.
 - No hay roles ni administradores: todos los usuarios tienen los mismos permisos sobre sus
   propias reservas.
+- Tráfico bajo y uso mayormente secuencial: no se garantiza el rechazo del solapamiento entre
+  solicitudes verdaderamente simultáneas (limitación conocida y aceptada en esta versión).
 - Modificar es una sustitución completa de fecha y horario (los tres campos se envían).
 - El listado se ordena de forma estable y determinista; `skip` y `limit` tienen valores por
   defecto razonables cuando no se indican.
