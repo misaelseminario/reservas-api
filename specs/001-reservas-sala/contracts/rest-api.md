@@ -48,6 +48,10 @@ endpoint lo acepta en el cuerpo ni en la ruta (Art. IV.6).
   `[]`.
 - **Id inexistente → 404; existente de otro usuario → 403**, para ver, modificar y eliminar.
 - Ninguna respuesta contiene `password` ni `password_hash`.
+- **Email en minúsculas**: el email se normaliza a minúsculas antes de guardarlo y de buscarlo
+  (`Usuario@X.com` y `usuario@x.com` son el mismo usuario). El **201** de `POST /auth/registro`
+  devuelve el email en minúsculas, un segundo registro con otra combinación de mayúsculas →
+  **400**, y `POST /auth/login` acepta cualquier combinación.
 - Contraseña: 8 caracteres mínimo y 72 bytes máximo (si no, 422).
 
 ## Ejemplo mínimo
