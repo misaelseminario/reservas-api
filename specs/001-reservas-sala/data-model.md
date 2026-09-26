@@ -35,8 +35,13 @@ Sin borrado en cascada de usuarios (la baja de usuarios está fuera de alcance).
 
 Para una reserva candidata `(fecha, ini, fin)` existe conflicto si hay otra reserva `r` con
 `r.fecha == fecha` **y** `ini < r.hora_fin` **y** `fin > r.hora_inicio`. Al modificar se
-añade `r.id != reserva_id` (RN-4). Se comprueba contra **todas** las reservas, de cualquier
-usuario (única consulta de `Reserva` sin filtro de `usuario_id`, permitida por Art. III.3).
+ignora la propia reserva (`r.id != reserva_id`, RN-4). Se comprueba contra **todas** las
+reservas de esa fecha, de cualquier usuario.
+
+**Dónde vive**: la fórmula se evalúa en `services/reservas.py` (Art. I.3) sobre la lista que
+devuelve `repo.listar_por_fecha(db, fecha)`; el repository solo consulta y no contiene la
+fórmula (Art. I.4). `listar_por_fecha` es una de las dos consultas de `Reserva` sin filtro de
+`usuario_id` que permite el Art. III.3 (la otra es `existe`).
 
 | Existente | Candidata | ¿Solapa? |
 |-----------|-----------|----------|
@@ -61,7 +66,7 @@ reglas; los que escriben hacen `commit`.
 | `listar_por_usuario(db, usuario_id, skip, limit) -> list[Reserva]` | Sí | Orden estable: `fecha, hora_inicio, id` |
 | `obtener_de_usuario(db, reserva_id, usuario_id) -> Reserva \| None` | Sí | Lectura de datos, siempre con dueño |
 | `existe(db, reserva_id) -> bool` | **No** (solo booleano) | Distingue 404/403; ver R9 |
-| `hay_solapamiento(db, fecha, hora_inicio, hora_fin, excluir_id=None) -> bool` | **No** (excepción III.3) | Regla RN-1 |
+| `listar_por_fecha(db, fecha) -> list[Reserva]` | **No** (excepción III.3) | Todas las reservas de esa fecha, de cualquier usuario, orden `hora_inicio, id`; el servicio aplica RN-1 |
 | `actualizar(db, reserva, fecha, hora_inicio, hora_fin) -> Reserva` | — | Persiste el cambio |
 | `eliminar(db, reserva) -> None` | — | Borra |
 

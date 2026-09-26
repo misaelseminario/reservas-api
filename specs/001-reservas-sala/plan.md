@@ -54,7 +54,7 @@ decisión del plan que lo cumple:
 | I.1 estructura obligatoria | Se crea exactamente `app/routers/`, `app/mcp/`, `app/services/`, `app/repositories/`, `app/models/`, `app/schemas/`, `app/utils/` y `app/core/` (Project Structure). |
 | I.2 routers/mcp sin reglas | Routers y tools solo parsean entrada, llaman a un servicio y traducen excepciones (decisión 3). El parseo de texto → `date`/`time` de MCP vive en `utils/fechas.py` y no es regla de negocio (R10). |
 | I.3 reglas en services | RN-1…RN-7 (y unicidad de email, propiedad, confirmación) están en `services/reservas.py` y `services/auth.py`. |
-| I.4 repositories | Solo `crear/listar/obtener/existe/hay_solapamiento/actualizar/eliminar`; la sesión es el primer parámetro; sin validaciones (data-model.md, «Contrato del repository»). |
+| I.4 repositories | Solo `crear/listar/obtener/existe/listar_por_fecha/actualizar/eliminar`; la sesión es el primer parámetro; sin validaciones (data-model.md, «Contrato del repository»). |
 | I.5 un sentido | `routers`/`mcp` → `services` → `repositories` → `models`; `core`, `schemas` y `utils` son transversales y no importan capas superiores (`core/` no importa `services/`; por eso `decodificar_token` devuelve `int \| None` y la excepción se lanza en `services/auth.py`, R4). |
 
 ### Art. II — SOLID y Repository — ✅
@@ -71,7 +71,7 @@ decisión del plan que lo cumple:
 |-------|---------------------------------|
 | III.1 ORM + sesión inyectada | SQLAlchemy 2.1; `get_db()` se inyecta con `Depends` en REST y `abrir_sesion()` (misma `SessionLocal`) en MCP. |
 | III.2 schemas separados | `schemas/` independientes de `models/`; `UsuarioLeer` y `Token` no contienen contraseña ni hash. |
-| III.3 `usuario_id` y filtro | `Reserva.usuario_id` es FK. Lectura/listado/borrado siempre con dueño (`listar_por_usuario`, `obtener_de_usuario`). Sin filtro solo `hay_solapamiento` y `existe -> bool` (necesario para distinguir 403/404, R9), las dos excepciones que recoge expresamente el Art. III.3 desde la versión 1.1.0. |
+| III.3 `usuario_id` y filtro | `Reserva.usuario_id` es FK. Lectura/listado/borrado siempre con dueño (`listar_por_usuario`, `obtener_de_usuario`). Sin filtro solo `listar_por_fecha` (para el solapamiento) y `existe -> bool` (necesario para distinguir 403/404, R9), las dos excepciones que recoge expresamente el Art. III.3 desde la versión 1.1.0. |
 
 ### Art. IV — Seguridad — ✅
 
@@ -126,8 +126,9 @@ decisión del plan que lo cumple:
    `EmailYaRegistradoError`, `ConfirmacionRequeridaError` (+ `NoAutenticadoError`).
 3. **Traducción**: routers → `HTTPException`; tools MCP → `{"error": "..."}`.
 4. **Solapamiento**: `inicio_nueva < fin_existente AND fin_nueva > inicio_existente`
-   (contiguas permitidas), evaluado en el repository (`hay_solapamiento`) y decidido por el
-   servicio (RN-1).
+   (contiguas permitidas), evaluada **íntegramente en `services/reservas.py`** (RN-1) sobre las
+   reservas que devuelve `repo.listar_por_fecha(fecha)` (de cualquier usuario). Al modificar,
+   el servicio excluye la propia reserva (RN-4). El repository no contiene la fórmula.
 5. **Tests**: unitarios con repo falso; integración con SQLite real; API para 401/403/404.
 6. **Entorno**: `.env.example` con las cuatro variables; `.env` en `.gitignore` (hoy no existe
    `.gitignore` en la raíz; se crea, incluyendo `.env`, `.venv/`, `*.db`, `__pycache__/`,
