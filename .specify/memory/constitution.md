@@ -34,8 +34,11 @@ especificaciones y las decisiones de diseño del proyecto. Cada regla está nume
 2. Los schemas Pydantic de entrada y de salida están separados de los modelos ORM. La
    contraseña NUNCA aparece en un schema de salida.
 3. Cada modelo con datos de usuario incluye `usuario_id` como FK. Ninguna consulta de
-   datos de Reserva puede omitir el filtro por `usuario_id`, excepto la verificación de
-   solapamiento, que por regla de negocio compara contra todas las reservas existentes.
+   datos de Reserva puede omitir el filtro por `usuario_id`, salvo estas dos excepciones:
+   (a) la verificación de solapamiento, que por regla de negocio compara contra todas las
+   reservas existentes; y (b) `existe(reserva_id) -> bool`, que el repository puede exponer
+   sin filtrar por `usuario_id` únicamente para distinguir 404 de 403 y que NUNCA devuelve
+   datos de la reserva.
 
 ### Artículo IV — Seguridad
 
@@ -118,4 +121,4 @@ especificaciones y las decisiones de diseño del proyecto. Cada regla está nume
 - Toda revisión de código o PR debe verificar el cumplimiento de los artículos; las
   desviaciones requieren la aprobación explícita descrita en «Flujo de Trabajo del Agente».
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-26 | **Last Amended**: 2026-09-26
+**Version**: 1.1.0 | **Ratified**: 2026-09-26 | **Last Amended**: 2026-09-26
