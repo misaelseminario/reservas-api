@@ -435,3 +435,47 @@ def test_argumentos_fuera_del_esquema_los_rechaza_el_sdk_sin_ejecutar_el_tool(cl
         assert resultado["isError"] is True
 
     assert _existe(cliente_mcp, ana, reserva["id"])
+
+
+# --- paridad REST ↔ MCP: el mismo mensaje para el mismo error (FR-025, SC-006) -----------
+
+
+def test_los_errores_mcp_tienen_el_mismo_mensaje_que_el_detail_de_rest(cliente_mcp, ana, luis):
+    de_ana = _crear(cliente_mcp, ana, "10:00", "12:00")
+    ayer = "2000-01-01"
+
+    def rest(cuerpo, cabeceras):
+        respuesta = cliente_mcp.post("/reservas/", json=cuerpo, headers=cabeceras)
+        assert respuesta.status_code == 400
+        return respuesta.json()["detail"]
+
+    def cuerpo(inicio, fin, fecha=FECHA):
+        return {"fecha": fecha, "hora_inicio": inicio, "hora_fin": fin}
+
+    casos = [
+        ("10:30", "11:30", FECHA),  # RN-1 solapada
+        ("11:00", "10:00", FECHA),  # RN-2 horas invertidas
+        ("09:00", "10:00", ayer),  # RN-7 fecha pasada
+    ]
+    for inicio, fin, fecha in casos:
+        detail_rest = rest(cuerpo(inicio, fin, fecha), luis)
+        error_mcp = _crear(cliente_mcp, luis, inicio, fin, fecha=fecha)
+        assert error_mcp == {"error": detail_rest}
+
+    # RN-3: reserva ajena (403) e inexistente (404), REST frente a MCP.
+    ajena = cliente_mcp.delete(f"/reservas/{de_ana['id']}", headers=luis)
+    assert ajena.status_code == 403
+    assert _cancelar(cliente_mcp, luis, de_ana["id"], confirmar=True) == {
+        "error": ajena.json()["detail"]
+    }
+    inexistente = cliente_mcp.delete("/reservas/9999", headers=luis)
+    assert inexistente.status_code == 404
+    assert _cancelar(cliente_mcp, luis, 9999, confirmar=True) == {
+        "error": inexistente.json()["detail"]
+    }
+
+    # Sin token: 401 en REST y «No autenticado» en MCP.
+    sin_token = cliente_mcp.get("/reservas/")
+    assert sin_token.status_code == 401
+    assert _crear(cliente_mcp, {}, "09:00", "10:00") == {"error": sin_token.json()["detail"]}
+    assert _existe(cliente_mcp, ana, de_ana["id"])  # nada de lo anterior tocó la reserva
