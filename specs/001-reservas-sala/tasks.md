@@ -30,18 +30,18 @@ Las tareas sin etiqueta son infraestructura compartida o verificación transvers
 
 **Purpose**: esqueleto del proyecto, dependencias con versión exacta y configuración de entorno.
 
-- [ ] T001 Crear el esqueleto de carpetas con un `__init__.py` vacío en cada paquete: `app/`, `app/core/`, `app/models/`, `app/schemas/`, `app/repositories/`, `app/services/`, `app/routers/`, `app/mcp/`, `app/utils/`, `tests/`, `tests/unit/`, `tests/integration/`, `tests/api/`.
-- [ ] T002 Crear `pyproject.toml` (proyecto gestionado con `uv`, **sin** `[build-system]`):
+- [X] T001 Crear el esqueleto de carpetas con un `__init__.py` vacío en cada paquete: `app/`, `app/core/`, `app/models/`, `app/schemas/`, `app/repositories/`, `app/services/`, `app/routers/`, `app/mcp/`, `app/utils/`, `tests/`, `tests/unit/`, `tests/integration/`, `tests/api/`.
+- [X] T002 Crear `pyproject.toml` (proyecto gestionado con `uv`, **sin** `[build-system]`):
   - `[project]`: `name = "reservas-api"`, `version = "0.1.0"`, `requires-python = ">=3.13"`.
   - `dependencies` con versión **exacta** (`==`), sin rangos (Art. VII.6): `fastapi==0.141.1`, `uvicorn==0.54.0`, `sqlalchemy==2.1.1`, `pydantic==2.13.5`, `pydantic-settings==2.15.0`, `pyjwt==2.15.0`, `bcrypt==5.0.0`, `mcp==1.30.0` (**no** 2.x: `FastMCP` no existe allí, research R2), `python-multipart==0.0.32`, `email-validator==2.3.0`.
   - `[dependency-groups] dev`: `pytest==9.1.1`, `pytest-cov==7.1.0`, `httpx==0.28.1`.
   - `[tool.pytest.ini_options]`: `testpaths = ["tests"]`, `pythonpath = ["."]`, y `filterwarnings = ["ignore:Using .httpx. with .starlette.testclient. is deprecated"]` (solo ese aviso de Starlette 1.7, research R12).
   - `[tool.coverage.run]`: `source = ["app"]`.
-- [ ] T003 Generar el entorno con `uv lock --python 3.13` y `uv sync`; comprobar con `uv run python -c "import fastapi, sqlalchemy, mcp; from mcp.server.fastmcp import FastMCP"` que resuelve sin error y que `uv.lock` mantiene exactamente las versiones de T002 (depende de T002). Si `uv sync` falla con «Failed to persist temporary file» (rutas largas de Windows), exportar `UV_PROJECT_ENVIRONMENT` a una ruta corta y repetir (research R13). Versionar `uv.lock`.
-- [ ] T004 [P] Crear `.env.example` en la raíz **sin valores reales**, con las cuatro variables comentadas en español: `SECRET_KEY=` (indicar cómo generarla: `python -c "import secrets; print(secrets.token_hex(32))"`), `ALGORITHM=HS256`, `ACCESS_TOKEN_EXPIRE_MINUTES=30`, `DATABASE_URL=sqlite:///./reservas.db` (Art. IV.4).
-- [ ] T005 [P] Crear `.gitignore` en la raíz (hoy no existe) incluyendo como mínimo: `.env`, `.venv/`, `*.db`, `__pycache__/`, `*.pyc`, `.pytest_cache/`, `.coverage`, `htmlcov/`. **No** ignorar `.env.example` ni `uv.lock`.
-- [ ] T006 Crear el `.env` local copiando `.env.example` (depende de T004 y T005) y rellenar `SECRET_KEY` con un valor aleatorio generado; verificar con `git check-ignore .env` (debe imprimir `.env`) y que `git status` **no** lo lista. Este archivo NO se versiona.
-- [ ] T007 [P] Crear `tests/conftest.py` que, **antes de importar nada de `app`**, fije con `os.environ.setdefault(...)` valores de prueba para `SECRET_KEY` (cadena fija de ≥ 32 caracteres), `ALGORITHM="HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES="30"` y `DATABASE_URL="sqlite:///./test_placeholder.db"`, para que los tests no dependan del `.env` real. (Los fixtures de BD/cliente se añaden en T042.)
+- [X] T003 Generar el entorno con `uv lock --python 3.13` y `uv sync`; comprobar con `uv run python -c "import fastapi, sqlalchemy, mcp; from mcp.server.fastmcp import FastMCP"` que resuelve sin error y que `uv.lock` mantiene exactamente las versiones de T002 (depende de T002). Si `uv sync` falla con «Failed to persist temporary file» (rutas largas de Windows), exportar `UV_PROJECT_ENVIRONMENT` a una ruta corta y repetir (research R13). Versionar `uv.lock`.
+- [X] T004 [P] Crear `.env.example` en la raíz **sin valores reales**, con las cuatro variables comentadas en español: `SECRET_KEY=` (indicar cómo generarla: `python -c "import secrets; print(secrets.token_hex(32))"`), `ALGORITHM=HS256`, `ACCESS_TOKEN_EXPIRE_MINUTES=30`, `DATABASE_URL=sqlite:///./reservas.db` (Art. IV.4).
+- [X] T005 [P] Crear `.gitignore` en la raíz (hoy no existe) incluyendo como mínimo: `.env`, `.venv/`, `*.db`, `__pycache__/`, `*.pyc`, `.pytest_cache/`, `.coverage`, `htmlcov/`. **No** ignorar `.env.example` ni `uv.lock`.
+- [X] T006 Crear el `.env` local copiando `.env.example` (depende de T004 y T005) y rellenar `SECRET_KEY` con un valor aleatorio generado; verificar con `git check-ignore .env` (debe imprimir `.env`) y que `git status` **no** lo lista. Este archivo NO se versiona.
+- [X] T007 [P] Crear `tests/conftest.py` que, **antes de importar nada de `app`**, fije con `os.environ.setdefault(...)` valores de prueba para `SECRET_KEY` (cadena fija de ≥ 32 caracteres), `ALGORITHM="HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES="30"` y `DATABASE_URL="sqlite:///./test_placeholder.db"`, para que los tests no dependan del `.env` real. (Los fixtures de BD/cliente se añaden en T042.)
 
 ---
 
@@ -49,19 +49,19 @@ Las tareas sin etiqueta son infraestructura compartida o verificación transvers
 
 **Purpose**: configuración, base de datos y seguridad. Bloquea todas las capas siguientes.
 
-- [ ] T008 Crear `app/core/config.py`: clase `Settings(BaseSettings)` con los campos `SECRET_KEY: str`, `ALGORITHM: str`, `ACCESS_TOKEN_EXPIRE_MINUTES: int`, `DATABASE_URL: str`, **sin valores por defecto** (Art. IV.3), `model_config = SettingsConfigDict(env_file=".env", extra="ignore")`; y `get_settings()` con `@lru_cache`. Nada hardcodeado.
-- [ ] T009 [P] Crear `app/core/database.py` (depende de T008), estilo SQLAlchemy 2:
+- [X] T008 Crear `app/core/config.py`: clase `Settings(BaseSettings)` con los campos `SECRET_KEY: str`, `ALGORITHM: str`, `ACCESS_TOKEN_EXPIRE_MINUTES: int`, `DATABASE_URL: str`, **sin valores por defecto** (Art. IV.3), `model_config = SettingsConfigDict(env_file=".env", extra="ignore")`; y `get_settings()` con `@lru_cache`. Nada hardcodeado.
+- [X] T009 [P] Crear `app/core/database.py` (depende de T008), estilo SQLAlchemy 2:
   - `class Base(DeclarativeBase)`.
   - `configurar_motor(url: str)`: crea el motor con `connect_args={"check_same_thread": False}` si la URL es SQLite, registra el evento `connect` que ejecuta `PRAGMA foreign_keys=ON`, y (re)enlaza `SessionLocal = sessionmaker(...)`. El motor por defecto se crea de forma perezosa con `get_settings().DATABASE_URL`.
   - `crear_tablas()`: `Base.metadata.create_all(bind=motor)`.
   - `get_db()`: generador para `Depends` (abre sesión, `yield`, cierra en `finally`).
   - `abrir_sesion()`: `@contextmanager` equivalente para usar fuera de FastAPI (tools MCP, Art. III.1 / research R6).
   - Debe poder reconfigurarse (`configurar_motor(otra_url)`) para que los tests apunten a un SQLite temporal.
-- [ ] T010 [P] Crear `app/core/security.py` (depende de T008), sin importar nada de `services/` ni capas superiores (Art. I.5):
+- [X] T010 [P] Crear `app/core/security.py` (depende de T008), sin importar nada de `services/` ni capas superiores (Art. I.5):
   - `hashear_password(password: str) -> str` con `bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()`, y `verificar_password(password: str, password_hash: str) -> bool` con `bcrypt.checkpw`. **Solo la librería `bcrypt`, sin passlib.** Nunca loguear contraseñas.
   - `crear_token(sub: str) -> str`: JWT con PyJWT, claims `sub` (string) y `exp` (ahora UTC + `ACCESS_TOKEN_EXPIRE_MINUTES`), firmado con `SECRET_KEY`/`ALGORITHM` de `get_settings()`.
   - `decodificar_token(token: str) -> int | None`: decodifica exigiendo `exp` y `sub` (`options={"require": ["exp", "sub"]}`); devuelve `int(sub)` o **`None`** ante cualquier fallo (firma inválida, expirado, mal formado, `sub` no numérico); **no lanza excepciones de dominio** (research R4).
-- [ ] T011 [P] Crear `tests/unit/test_security.py` (depende de T010): hash ≠ contraseña y verifica OK/KO; dos hashes de la misma contraseña difieren; `crear_token` → `decodificar_token` devuelve el mismo id; token con otra firma, token mal formado, cadena vacía y token expirado (crear con `exp` en el pasado usando PyJWT directamente) → `None`; `sub` no numérico → `None`. Sin `unittest.mock`.
+- [X] T011 [P] Crear `tests/unit/test_security.py` (depende de T010): hash ≠ contraseña y verifica OK/KO; dos hashes de la misma contraseña difieren; `crear_token` → `decodificar_token` devuelve el mismo id; token con otra firma, token mal formado, cadena vacía y token expirado (crear con `exp` en el pasado usando PyJWT directamente) → `None`; `sub` no numérico → `None`. Sin `unittest.mock`.
 
 **Checkpoint**: `uv run pytest tests/unit/test_security.py` pasa; `uv run python -c "from app.core.database import configurar_motor"` importa sin error.
 
@@ -71,18 +71,18 @@ Las tareas sin etiqueta son infraestructura compartida o verificación transvers
 
 **Purpose**: entidades ORM. Las restricciones se citan tal cual de `data-model.md`.
 
-- [ ] T012 [P] Crear `app/models/usuario.py`: `Usuario(Base)`, `__tablename__ = "usuarios"`, con `Mapped[...]`/`mapped_column`:
+- [X] T012 [P] Crear `app/models/usuario.py`: `Usuario(Base)`, `__tablename__ = "usuarios"`, con `Mapped[...]`/`mapped_column`:
   - `id`: Integer, PK, autoincremental.
   - `email`: String(254), NOT NULL, **UNIQUE**, indexado (RN-5); se guarda siempre en minúsculas (lo normaliza `services/auth.py`, RN-5).
   - `password_hash`: NOT NULL; hash bcrypt, nunca la contraseña (Art. IV.2). (`data-model.md` lo escribe «String(60..)»: un hash bcrypt mide 60 caracteres, usar `String(60)`.)
   - Relación `reservas` (1 → N) con `Reserva`.
-- [ ] T013 [P] Crear `app/models/reserva.py`: `Reserva(Base)`, `__tablename__ = "reservas"`:
+- [X] T013 [P] Crear `app/models/reserva.py`: `Reserva(Base)`, `__tablename__ = "reservas"`:
   - `id`: Integer, PK, autoincremental.
   - `usuario_id`: Integer, NOT NULL, **FK → `usuarios.id`**, indexado (Art. III.3).
   - `fecha`: Date, NOT NULL, indexado.
   - `hora_inicio`: Time, NOT NULL. `hora_fin`: Time, NOT NULL.
   - **Sin** `CHECK` en BD para `hora_fin > hora_inicio` (la regla vive solo en `services/`, Art. I.3). Sin `sala_id`. Sin cascada de borrado de usuarios. Relación inversa `usuario`.
-- [ ] T014 Crear `app/models/__init__.py` que importe y reexporte `Usuario` y `Reserva` (para que `Base.metadata` los registre antes de `create_all`); depende de T012 y T013.
+- [X] T014 Crear `app/models/__init__.py` que importe y reexporte `Usuario` y `Reserva` (para que `Base.metadata` los registre antes de `create_all`); depende de T012 y T013.
 
 **Checkpoint**: `uv run python -c "from app.core.database import configurar_motor, crear_tablas; import app.models; configurar_motor('sqlite:///:memory:'); crear_tablas()"` termina sin error.
 
@@ -92,15 +92,15 @@ Las tareas sin etiqueta son infraestructura compartida o verificación transvers
 
 **Purpose**: contratos de entrada/salida separados de los modelos ORM (Art. III.2). Solo validan **formato**, no reglas de negocio.
 
-- [ ] T015 [P] Crear `app/schemas/usuario.py`:
+- [X] T015 [P] Crear `app/schemas/usuario.py`:
   - `UsuarioCrear`: `email: EmailStr`, `password: str` con validador: mínimo 8 caracteres y máximo **72 bytes** al codificar en UTF-8 (bcrypt 5 lanza `ValueError` por encima de 72, research R5) → 422.
   - `UsuarioLeer`: `id: int`, `email: EmailStr`, `model_config = ConfigDict(from_attributes=True)`. **Sin `password` ni `password_hash`** (Art. III.2, FR-004).
   - `Token`: `access_token: str`, `token_type: str` (valor `"bearer"`).
-- [ ] T016 [P] Crear `app/schemas/reserva.py`:
+- [X] T016 [P] Crear `app/schemas/reserva.py`:
   - `ReservaCrear` y `ReservaActualizar`: `fecha: date`, `hora_inicio: time`, `hora_fin: time`, los tres obligatorios (modificar es sustitución completa); formato inválido → 422. **Depende de T035** (`utils` es transversal: ejecutar T035 antes de T016): un `field_validator("fecha", mode="before")` y otro para `hora_inicio`/`hora_fin` que, si el valor es `str`, lo pasan por `parsear_fecha`/`parsear_hora` de `app/utils/fechas.py`; el `ValueError` se convierte en 422. Así `09:00:30`, `9:00` o `2030-01-15T10:00:00` se rechazan igual que por MCP (FR-025).
   - `ReservaLeer`: `id`, `usuario_id`, `fecha`, `hora_inicio`, `hora_fin`, con `from_attributes=True`.
   - Ninguna regla RN aquí (Art. I.3).
-- [ ] T017 [P] Crear `tests/unit/test_schemas.py` (depende de T015 y T016): `UsuarioLeer.model_fields` no contiene `password`/`password_hash`, y serializar un `Usuario` no los incluye; contraseña de 7 caracteres → `ValidationError`; de 73 bytes (p. ej. 40 caracteres `é`) → `ValidationError`; de exactamente 72 bytes → válida; email inválido → error; `ReservaCrear` acepta `"2030-01-15"`/`"09:00"` y rechaza `"15/01/2030"`, `"25:00"`, `"09:00:30"`, `"9:00"` y `"2030-01-15T10:00:00"`.
+- [X] T017 [P] Crear `tests/unit/test_schemas.py` (depende de T015 y T016): `UsuarioLeer.model_fields` no contiene `password`/`password_hash`, y serializar un `Usuario` no los incluye; contraseña de 7 caracteres → `ValidationError`; de 73 bytes (p. ej. 40 caracteres `é`) → `ValidationError`; de exactamente 72 bytes → válida; email inválido → error; `ReservaCrear` acepta `"2030-01-15"`/`"09:00"` y rechaza `"15/01/2030"`, `"25:00"`, `"09:00:30"`, `"9:00"` y `"2030-01-15T10:00:00"`.
 
 **Checkpoint**: `uv run pytest tests/unit/test_schemas.py` pasa.
 
@@ -110,11 +110,11 @@ Las tareas sin etiqueta son infraestructura compartida o verificación transvers
 
 **Purpose**: persistencia y consultas, sin validar reglas de negocio (Art. I.4). La sesión es siempre el **primer parámetro**. Los métodos que escriben hacen `commit`.
 
-- [ ] T018 Crear `app/repositories/base.py` con dos `typing.Protocol` según `data-model.md` («Contrato del repository»):
+- [X] T018 Crear `app/repositories/base.py` con dos `typing.Protocol` según `data-model.md` («Contrato del repository»):
   - `ReservaRepositoryProtocol`: `crear(db, usuario_id, fecha, hora_inicio, hora_fin) -> Reserva`; `listar_por_usuario(db, usuario_id, skip, limit) -> list[Reserva]`; `obtener_de_usuario(db, reserva_id, usuario_id) -> Reserva | None`; `existe(db, reserva_id) -> bool`; `listar_por_fecha(db, fecha) -> list[Reserva]`; `actualizar(db, reserva, fecha, hora_inicio, hora_fin) -> Reserva`; `eliminar(db, reserva) -> None`.
   - `UsuarioRepositoryProtocol`: `crear(db, email, password_hash) -> Usuario`; `obtener_por_email(db, email) -> Usuario | None`; `obtener_por_id(db, usuario_id) -> Usuario | None`.
-- [ ] T019 [P] Crear `app/repositories/usuario_repository.py`: clase sin estado `UsuarioRepository` que cumple el Protocol (T018) con SQLAlchemy 2 (`select()`), y la **instancia de módulo** `usuario_repository = UsuarioRepository()` (será el valor por defecto de los servicios, Art. II.1). Sin validaciones de negocio.
-- [ ] T020 [P] Crear `app/repositories/reserva_repository.py`: clase sin estado `ReservaRepository` que cumple el Protocol (T018) y la instancia `reserva_repository = ReservaRepository()`:
+- [X] T019 [P] Crear `app/repositories/usuario_repository.py`: clase sin estado `UsuarioRepository` que cumple el Protocol (T018) con SQLAlchemy 2 (`select()`), y la **instancia de módulo** `usuario_repository = UsuarioRepository()` (será el valor por defecto de los servicios, Art. II.1). Sin validaciones de negocio.
+- [X] T020 [P] Crear `app/repositories/reserva_repository.py`: clase sin estado `ReservaRepository` que cumple el Protocol (T018) y la instancia `reserva_repository = ReservaRepository()`:
   - `listar_por_usuario`: **siempre** `WHERE usuario_id = :usuario_id`, orden estable `fecha, hora_inicio, id`, con `OFFSET skip` / `LIMIT limit`.
   - `obtener_de_usuario`: **siempre** filtrada por `id` **y** `usuario_id` (Art. III.3).
   - `existe`: devuelve solo `bool`, **nunca datos** de la reserva. Es una de las dos excepciones al filtro por `usuario_id` recogidas en el Art. III.3 v1.1.0, únicamente para distinguir 404 de 403.
@@ -187,8 +187,8 @@ Las tareas sin etiqueta son infraestructura compartida o verificación transvers
 
 **Purpose**: segunda vía de acceso. Cada tool llama a la **misma función de `services/`** que su endpoint (Art. VI.1), resuelve el usuario con el JWT del header y devuelve `{"error": "..."}` en lugar de excepciones (Art. VI.3).
 
-- [ ] T035 [P] [US4] Crear `app/utils/fechas.py`: `parsear_fecha(texto: str) -> date` (formato `YYYY-MM-DD`), `parsear_hora(texto: str) -> time` (formato `HH:MM`), ambos lanzan `ValueError` con mensaje en español si el formato no es válido (formato estricto: `09:00:30` y `9:00` se rechazan); los reutilizan también los schemas de reserva (T016), de modo que REST y MCP aceptan exactamente el mismo formato; y `reserva_a_dict(reserva) -> dict` que devuelve `{"id": int, "fecha": "YYYY-MM-DD", "hora_inicio": "HH:MM", "hora_fin": "HH:MM"}`. Es conversión de formato, **no** lógica de negocio (Art. I.2, research R10).
-- [ ] T036 [P] [US4] Crear `tests/unit/test_fechas.py` (depende de T035): formatos válidos; `"15/01/2030"`, `"2030-13-01"`, `"9:00 AM"`, `"25:00"`, `"09:00:30"`, `"9:00"`, `""` → `ValueError`; `reserva_a_dict` con una `Reserva` en memoria (sin BD) devuelve horas `HH:MM`.
+- [X] T035 [P] [US4] Crear `app/utils/fechas.py`: `parsear_fecha(texto: str) -> date` (formato `YYYY-MM-DD`), `parsear_hora(texto: str) -> time` (formato `HH:MM`), ambos lanzan `ValueError` con mensaje en español si el formato no es válido (formato estricto: `09:00:30` y `9:00` se rechazan); los reutilizan también los schemas de reserva (T016), de modo que REST y MCP aceptan exactamente el mismo formato; y `reserva_a_dict(reserva) -> dict` que devuelve `{"id": int, "fecha": "YYYY-MM-DD", "hora_inicio": "HH:MM", "hora_fin": "HH:MM"}`. Es conversión de formato, **no** lógica de negocio (Art. I.2, research R10).
+- [X] T036 [P] [US4] Crear `tests/unit/test_fechas.py` (depende de T035): formatos válidos; `"15/01/2030"`, `"2030-13-01"`, `"9:00 AM"`, `"25:00"`, `"09:00:30"`, `"9:00"`, `""` → `ValueError`; `reserva_a_dict` con una `Reserva` en memoria (sin BD) devuelve horas `HH:MM`.
 - [ ] T037 [US4] Crear `app/mcp/autenticacion.py`: `obtener_usuario_desde_contexto(ctx: Context, db) -> Usuario` que lee `ctx.request_context.request.headers.get("authorization")` (`request` puede ser `None`), extrae el token solo si el esquema es `Bearer` (insensible a mayúsculas) y llama a **`services.auth.obtener_usuario_actual`** (la misma función que REST); cualquier fallo → `NoAutenticadoError` (research R3, R4). Sin usuario fijo (Art. VI.6).
 - [ ] T038 [US4] Crear `app/mcp/server.py` (depende de T035, T037) con una **fábrica** `crear_servidor_mcp() -> FastMCP` que construye `FastMCP("reservas", stateless_http=True, json_response=True, streamable_http_path="/mcp")` (importar con `from mcp.server.fastmcp import FastMCP, Context`, **import absoluto**), registra los tools dentro de la función y devuelve el servidor. Una instancia nueva por app: `StreamableHTTPSessionManager.run()` solo puede ejecutarse una vez por instancia (research R3.3). Primer tool, dentro de la fábrica: **`crear_reserva(ctx: Context, fecha: str, hora_inicio: str, hora_fin: str) -> dict`**:
   - Abre sesión con `abrir_sesion()`, resuelve el usuario (T037), convierte los textos con `utils/fechas.py` y llama a `services.reservas.crear_reserva` (misma función que `POST /reservas/`).

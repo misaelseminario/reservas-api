@@ -1,0 +1,23 @@
+# Secretos: .env NUNCA se versiona (.env.example sí)
+.env
+
+# Entorno virtual
+.venv/
+
+# Base de datos SQLite
+*.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Tests y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
